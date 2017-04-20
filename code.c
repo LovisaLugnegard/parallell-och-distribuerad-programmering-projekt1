@@ -33,7 +33,7 @@ int main(int argc, char **argv)
 
   MPI_Request request[nprocs];
   MPI_Datatype strided; 
-  MPI_Status status;
+  MPI_Status status[nprocs];
 
   n = 40;
   range = 1.0;
@@ -154,21 +154,22 @@ int main(int argc, char **argv)
       }
     }
   }
-  printf("nprocs: %d sqnprocs: %d rank: %d", nprocs, sqnprocs, rank);
-
-  MPI_Recv(&A,n*n/nprocs,MPI_DOUBLE,0,1,proc_grid,&status); //[A,double]   //Ta emot en fyrkant
-
+ 
+  MPI_Barrier(proc_grid);
+  // MPI_Probe(0,1,proc_grid, &status);
+  MPI_Recv(&A[n*n/nprocs],n*n/nprocs,MPI_DOUBLE,0,1,proc_grid,&status[rank]); //[A,double]   //Ta emot en fyrkant
+  //LLLLOOOOLLLL
 
   //HÄR KAN DET VARA ETT PROBLEM!!!!!!!!!!
-
-  MPI_Recv(&B,n*n/nprocs,MPI_DOUBLE,0,2,proc_grid,&status); //[B,double]  
+  // MPI_Probe(0,2,proc_grid, &status);
+  MPI_Recv(&B[n*n/nprocs],n*n/nprocs,MPI_DOUBLE,0,2,proc_grid,&status[rank]); //[B,double]  
   // MPI_Recv(&numA,1,MPI_INT,0,1,proc_grid,&status); //[A,double]   //Ta emot en fyrkant
   // MPI_Recv(&numB,1,MPI_INT,0,2,proc_grid,&status); //[B,double]  
   printf("processor %d got \n",rank);
   printf("processor %d got \n",rank);
      
   //wait
-  MPI_Waitall(nprocs,request,&status);
+  MPI_Waitall(nprocs,request,&status[nprocs]);
 
   //Fox Algo
   for (k=0; k<sqnprocs; k++) {
@@ -203,7 +204,7 @@ int main(int argc, char **argv)
 
     // C += current_A*B;}//skapa block C
 
-    MPI_Recv(&current_B,n/sqnprocs,MPI_DOUBLE,(coords[0]+1)%sqnprocs,3,proc_col,&status);
+    MPI_Recv(&current_B,n/sqnprocs,MPI_DOUBLE,(coords[0]+1)%sqnprocs,3,proc_col,&status[rank]);
     double temp = *B;
     *B=*current_B;
     *current_B=temp;
@@ -215,12 +216,12 @@ int main(int argc, char **argv)
   MPI_Isend(&C, n*n/nprocs, MPI_DOUBLE, 0, 4, proc_grid, &request[k]);  //[C,double] 
   if(rank==0){
     for (i=0; i<nprocs; i++) {
-      MPI_Probe(i,4,proc_grid, &status);
+      MPI_Probe(i,4,proc_grid, &status[rank]);
       MPI_Cart_coords(proc_grid, i,2,&coords[2]);//vad använda coords till?
-      MPI_Recv(&Cglobal[coords[0]*sqnprocs+coords[1]],1, strided, i,4,proc_grid, &status); //[C,type]
+      MPI_Recv(&Cglobal[coords[0]*sqnprocs+coords[1]],1, strided, i,4,proc_grid, &status[rank]); //[C,type]
     }
   }   
-  MPI_Wait(request, &status);
+  MPI_Wait(request, &status[nprocs]);
 }
 
 
