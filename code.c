@@ -24,7 +24,7 @@ int main(int argc, char **argv)
   srand(0);
 
   int i,j,k,l,m,n_local_rows,n;
-  int rank, nprocs, sqnprocs;
+  int rank, nprocs, sqnprocs,bonk2;
   double *A, *Aglobal, *current_A, *B, *Bglobal, *C, *Cglobal, *current_B, *CglobalTest;
   double range, begin, end;
 
@@ -111,8 +111,8 @@ int main(int argc, char **argv)
       }
     }
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  int row_rank, col_rank, ndims,  reorder,numA,numB;
+  // MPI_Barrier(MPI_COMM_WORLD);
+  int row_rank, col_rank,grid_rank, ndims,  reorder,numA,numB;
   int dims[2], coords[2], cyclic[2];
   MPI_Comm proc_grid, proc_row, proc_col;
   ndims = 2;
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
   // printf("\n before coords create \n");
   //MPI_Dims_create(nprocs,ndims,dims);
   MPI_Cart_create(MPI_COMM_WORLD,ndims,dims,cyclic, reorder,&proc_grid);
-  MPI_Comm_rank(proc_grid,&rank);
+  MPI_Comm_rank(proc_grid,&grid_rank);
   MPI_Cart_coords(proc_grid,rank,ndims,coords);
   MPI_Comm_split(proc_grid,coords[0],coords[1],&proc_row);
   MPI_Comm_rank(proc_row,&row_rank);
@@ -146,12 +146,12 @@ int main(int argc, char **argv)
 	// printf("\n Aglobal is_: %g \n",Aglobal[k]);
 	// printf("\n Bglobal is_: %g \n",Bglobal[k]);}
         MPI_Cart_rank(proc_grid,coords,&rank);
-        MPI_Isend(&Aglobal[i*sqnprocs+j], 1, strided, (j+i*sqnprocs), 1, proc_grid, &request[i*sqnprocs+j]); //[A,mytype]
-        MPI_Isend(&Bglobal[i*sqnprocs+j], 1, strided, (j+i*sqnprocs), 2, proc_grid, &request[i*sqnprocs+j]); //[B,mytype]
+        MPI_Isend(&Aglobal[(n*n/nprocs)*2*i+n/sqnprocs*j], 1, strided, (j+i*sqnprocs), 1, proc_grid, &request[i*sqnprocs+j]); //[A,mytype]
+        MPI_Isend(&Bglobal[(n*n/nprocs)*2*i+n/sqnprocs*j], 1, strided, (j+i*sqnprocs), 2, proc_grid, &request[i*sqnprocs+j]); //[B,mytype]
         printf("\n i did send! \n");
       }
     }
-  MPI_Waitall(nprocs - 1,request,status);
+    // MPI_Waitall(nprocs - 1,request,status);
   }
  
   MPI_Barrier(proc_grid);
@@ -159,16 +159,25 @@ int main(int argc, char **argv)
   MPI_Recv(A,n*n/nprocs,MPI_DOUBLE,0,1,proc_grid,&status[rank]); //[A,double]   //Ta emot en fyrkant
   MPI_Recv(B,n*n/nprocs,MPI_DOUBLE,0,2,proc_grid,&status[rank]); //[B,double]  
 
-  MPI_Barrier(proc_grid);
+  MPI_Get_elements(&status[rank],MPI_DOUBLE,&bonk2);
+  printf("proc %d recv %d elements of type MPI_DOUBLE\n",rank,bonk2);
+  for (i=0;i<bonk2;i++)
+    if(A[i] != -1)
+      printf("proc: %d  %g\n",rank,A[i]);
 
-  //  printf("Processor %d is before fox algo. \n",rank);
+  //  MPI_Barrier(proc_grid);
 
+    printf("Processor %d is before fox algo. \n",rank);
+
+    //hit verkar allt fungera :)
 
   //Fox Algo
   for (k=0; k<sqnprocs; k++) {
     // for (i=0; i<sqnprocs; i++) {
+    //broadcast A radvis, current_A verkar inte användas senare, det ger problem! det är ju det vi ska multiplicera med?
+    
     if(coords[1]==(k+coords[0])%sqnprocs){
-      MPI_Barrier(proc_row);   
+      MPI_Barrier(proc_row);
       MPI_Bcast(A,n*n/nprocs,MPI_DOUBLE,0,proc_row);
       MPI_Barrier(proc_row);
     }
@@ -176,71 +185,86 @@ int main(int argc, char **argv)
       MPI_Barrier(proc_row);
       MPI_Bcast(current_A,n*n/nprocs,MPI_DOUBLE,0,proc_row);
       MPI_Barrier(proc_row);
+
+      //printa curret_A
+  MPI_Get_elements(&status[rank],MPI_DOUBLE,&bonk2);
+  printf("andra ggn proc %d recv %d elements of type MPI_DOUBLE\n",rank,bonk2);
+  for (i=0;i<bonk2;i++)
+    if(current_A[i] != -1)
+      printf("proc: %d  %g\n",rank,current_A[i]);
     }
      
 
 
-    //m=(i+k)%sqnprocs;
-    // memcpy(current_A,&A,n/sqnprocs);
-    // memcpy(current_col[i],&Aglobal[m]);
-    //   MPI_Bcast(&current_A,n*n/nprocs,MPI_DOUBLE,0,proc_row);
-    // }
-    // for (j=0; j<n*n/nprocs;j++){
-    // for(m=0;m<n*n/nprocs;m++){
-    //   C[
-    //}
 
 
-    printf("\n Hi! I'm before Isend in fox algo :) k= %d, rank = %d, B's dest is: %d, coords[0] = %d \n", k, rank, ((coords[0]-1+nprocs)%nprocs)%sqnprocs, coords[0]);
 
-    MPI_Barrier(proc_col);
-    MPI_Isend(&B[0],n/sqnprocs,MPI_DOUBLE,((coords[0]-1+nprocs)%nprocs)%sqnprocs,3,proc_col,&request[rank]);
-    printf("\n Hi! Process %d after Isend in fox algo :)", rank );
-    //SKRIV RIKTIG MATRISKOD!
-    for (i = 0; i < n/sqnprocs; i++){
-      for (j = 0; j < n/sqnprocs; j++) {
-        for (l = 0; l < n/nprocs; l++) {
-	    	  printf("\n Process %d in matrix loop C= %g, A = %g, B is: %g \n",rank, C[i*n/sqnprocs+j] , A[i*n/sqnprocs+k], B[k*n/sqnprocs+j]);
-	  C[i*n/sqnprocs+j] =C[i*n/sqnprocs+j] + A[i*n/sqnprocs+l]*B[l*n/sqnprocs+j];
-	  //	  printf(" A= %d, b= %d, C=%d ", A[i*n/sqnprocs+l],B[l*n/sqnprocs+j], C[i*n/sqnprocs+j]);
-        }
-	//	printf("\n ");
-	//	printf("\n C = %d", C[i*n/sqnprocs+j]);
-      }
-    }
-    MPI_Wait(&request[rank], &status[rank]);
-    MPI_Barrier(proc_col);
+  /*   //m=(i+k)%sqnprocs; */
+  /*   // memcpy(current_A,&A,n/sqnprocs); */
+  /*   // memcpy(current_col[i],&Aglobal[m]); */
+  /*   //   MPI_Bcast(&current_A,n*n/nprocs,MPI_DOUBLE,0,proc_row); */
+  /*   // } */
+  /*   // for (j=0; j<n*n/nprocs;j++){ */
+  /*   // for(m=0;m<n*n/nprocs;m++){ */
+  /*   //   C[ */
+  /*   //} */
 
-    printf("\n Process %d before receiving current B from: %d", rank, ((coords[0]+1+nprocs)%nprocs)%sqnprocs);
-    MPI_Recv(&current_B[0],n/sqnprocs,MPI_DOUBLE,((coords[0]+1+nprocs)%nprocs)%sqnprocs,3,proc_col,&status[rank]);
-    MPI_Barrier(proc_col);
-    printf("\n Proc: %d after receiving current B", rank);
-    double temp = *B;
-    *B=*current_B;
-    *current_B=temp;
-    //   memcpy(B,&current_B,n/sqnprocs);
 
-  }
 
-  printf("\n Process: %d, hejhej!", rank);
-  //Skift B 
-  //Collect blocks of C
-  MPI_Isend(C, n*n/nprocs, MPI_DOUBLE, 0, 4, proc_grid, &request[k]);  //[C,double] 
-  printf("\n Process %d after MPI_Isend C", rank);
-  if(rank==0){
-    printf("\n rank=0");
-    for (i=0; i<nprocs; i++) {
-      MPI_Probe(i,4,proc_grid, &status[rank]);
-      MPI_Cart_coords(proc_grid, i,2,&coords[2]);//vad använda coords till?
-      MPI_Recv(&Cglobal[coords[0]*sqnprocs+coords[1]],1, strided, i,4,proc_grid, &status[rank]); //[C,type]
-    }
-    MPI_Barrier(proc_grid);
-    for(j=0; j<n;j++){
-      printf("\n %d", Cglobal[j]);
-	}
-  }   
-  //  MPI_Wait(&request[nprocs], &status[nprocs]);
-  //  MPI_Finalize();
+    //allt detta är bortkommenterat för att förstå vad som händer innan
+
+
+
+  /*   printf("\n Hi! I'm before Isend in fox algo :) k= %d, rank = %d, B's dest is: %d, coords[0] = %d \n", k, rank, ((coords[0]-1+nprocs)%nprocs)%sqnprocs, coords[0]); */
+
+  /*   MPI_Barrier(proc_col); */
+  /*   MPI_Isend(&B[0],n/sqnprocs,MPI_DOUBLE,((coords[0]-1+nprocs)%nprocs)%sqnprocs,3,proc_col,&request[rank]); */
+  /*   printf("\n Hi! Process %d after Isend in fox algo :)", rank ); */
+  /*   //SKRIV RIKTIG MATRISKOD! */
+  /*   for (i = 0; i < n/sqnprocs; i++){ */
+  /*     for (j = 0; j < n/sqnprocs; j++) { */
+  /*       for (l = 0; l < n/nprocs; l++) { */
+  /* 	    	  printf("\n Process %d in matrix loop C= %g, A = %g, B is: %g \n",rank, C[i*n/sqnprocs+j] , A[i*n/sqnprocs+k], B[k*n/sqnprocs+j]); */
+  /* 	  C[i*n/sqnprocs+j] =C[i*n/sqnprocs+j] + A[i*n/sqnprocs+l]*B[l*n/sqnprocs+j]; */
+  /* 	  //	  printf(" A= %d, b= %d, C=%d ", A[i*n/sqnprocs+l],B[l*n/sqnprocs+j], C[i*n/sqnprocs+j]); */
+  /*       } */
+  /* 	//	printf("\n "); */
+  /* 	//	printf("\n C = %d", C[i*n/sqnprocs+j]); */
+  /*     } */
+  /*   } */
+  /*   MPI_Wait(&request[rank], &status[rank]); */
+  /*   MPI_Barrier(proc_col); */
+
+  /*   printf("\n Process %d before receiving current B from: %d", rank, ((coords[0]+1+nprocs)%nprocs)%sqnprocs); */
+  /*   MPI_Recv(&current_B[0],n/sqnprocs,MPI_DOUBLE,((coords[0]+1+nprocs)%nprocs)%sqnprocs,3,proc_col,&status[rank]); */
+  /*   MPI_Barrier(proc_col); */
+  /*   printf("\n Proc: %d after receiving current B", rank); */
+  /*   double temp = *B; */
+  /*   *B=*current_B; */
+  /*   *current_B=temp; */
+  /*   //   memcpy(B,&current_B,n/sqnprocs); */
+
+   }
+
+  /* printf("\n Process: %d, hejhej!", rank); */
+  /* //Skift B */
+  /* //Collect blocks of C */
+  /* MPI_Isend(C, n*n/nprocs, MPI_DOUBLE, 0, 4, proc_grid, &request[k]);  //[C,double] */
+  /* printf("\n Process %d after MPI_Isend C", rank); */
+  /* if(rank==0){ */
+  /*   printf("\n rank=0"); */
+  /*   for (i=0; i<nprocs; i++) { */
+  /*     MPI_Probe(i,4,proc_grid, &status[rank]); */
+  /*     MPI_Cart_coords(proc_grid, i,2,&coords[2]);//vad använda coords till? */
+  /*     MPI_Recv(&Cglobal[coords[0]*sqnprocs+coords[1]],1, strided, i,4,proc_grid, &status[rank]); //[C,type] */
+  /*   } */
+  /*   MPI_Barrier(proc_grid); */
+  /*   for(j=0; j<n;j++){ */
+  /*     printf("\n %d", Cglobal[j]); */
+  /* 	} */
+  /* } */
+  /* //  MPI_Wait(&request[nprocs], &status[nprocs]); */
+  /* // MPI_Finalize(); */
 }
 
 
