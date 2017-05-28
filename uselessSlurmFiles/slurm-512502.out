@@ -1,0 +1,8 @@
+
+ Matrix A (generated randomly):
+[r163:22309] *** An error occurred in MPI_Comm_rank
+[r163:22309] *** reported by process [4135714817,4]
+[r163:22309] *** on communicator MPI_COMM_WORLD
+[r163:22309] *** MPI_ERR_COMM: invalid communicator
+[r163:22309] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[r163:22309] ***    and potentially your MPI job)

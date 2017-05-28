@@ -36,7 +36,8 @@ int main(int argc, char **argv)
   MPI_Datatype strided; 
   MPI_Status status[nprocs];
 
-  n = 288;
+  /* matrix size */
+  n = 1440; 
   range = 1.0;
   
   sqnprocs = sqrt(nprocs);
@@ -128,7 +129,6 @@ int main(int argc, char **argv)
   MPI_Comm_split(proc_grid,coords[1],coords[0],&proc_col);
   MPI_Comm_rank(proc_col,&col_rank);
 
-    printf("\nCommunicator set up\n");
   //Distribution of A and B to all processes
   if(rank == 0) {
     time_init = MPI_Wtime(); //start timer  
@@ -145,17 +145,9 @@ int main(int argc, char **argv)
   }
  
   MPI_Barrier(MPI_COMM_WORLD);
-    printf("\n A och B skickade\n");
   MPI_Recv(A,n*n/nprocs,MPI_DOUBLE,0,1,proc_grid,&status[rank]); //[A,double]   //Ta emot en fyrkant
   MPI_Recv(B,n*n/nprocs,MPI_DOUBLE,0,2,proc_grid,&status[rank]); //[B,double]  
 
-
-        
-        MPI_Get_elements(&status[rank],MPI_DOUBLE,&bonk2);
-        printf("\n rank %d got %d elements of type MPI_DOUBLE\n",rank, bonk2);
-
-
-    printf("\n A och B mottagna\n");
   memcpy(current_A, A,(n*n/nprocs)*sizeof(double)); 
   MPI_Barrier(proc_grid);
   //Fox Algo
@@ -177,13 +169,12 @@ int main(int argc, char **argv)
     memcpy(B, current_B,(n*n/nprocs)*sizeof(double));
 
   }
-    printf("\nC ska skickas\n");
 
   //Collect blocks of C
   MPI_Isend(C, n*n/nprocs, MPI_DOUBLE, 0, 4, proc_grid, &request[rank]);  //[C,double] 
-  printf("\nC har skickas, %d element \n", n*n/nprocs);
-    // MPI_Barrier(proc_grid);
 
+  MPI_Barrier(proc_grid);
+  // MPI_Wait(request, MPI_STATUS_IGNORE);
   if(rank==0){
     free(Aglobal);
     free(Bglobal);
@@ -191,15 +182,12 @@ int main(int argc, char **argv)
     Cglobal = malloc((n*n+4*n)*sizeof(double));
     for (i=0; i<nprocs; i++) {
       MPI_Probe(i,4,proc_grid, &status[i]);
-      MPI_Cart_coords(proc_grid, i,2,coords);
-      printf("\nC ska tas emot till plats: %d \n", coords[1]*n/sqnprocs+coords[0]*n*n/sqnprocs);      
+      MPI_Cart_coords(proc_grid, i,2,coords);      
       MPI_Recv(&Cglobal[coords[1]*n/sqnprocs+coords[0]*n*n/sqnprocs],1, strided, i,4,proc_grid, &status[i]); //[C,type]
-      printf("\nC har tagits emot till plats: %d \n", coords[1]*n/sqnprocs+coords[0]*n*n/sqnprocs);
     }
-
   }
 
-  MPI_Wait(request, status);
+  MPI_Wait(&request[rank],&status[rank]);
 
   if(rank == 0){
     time_end = MPI_Wtime() - time_init;
@@ -219,11 +207,12 @@ int main(int argc, char **argv)
 
     free(Cglobal);
   }
+
   free(A);
   free(B);
   free(C);
 
-  MPI_Finalize(); 
+  MPI_Finalize();  
 }
 
 void local_matrix_mult(double *a, double *b, double *c, int size, int rank){

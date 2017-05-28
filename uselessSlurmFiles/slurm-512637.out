@@ -1,0 +1,23 @@
+
+ Matrix size = 1152 
+[r105:13221] *** Process received signal ***
+[r105:13221] Signal: Segmentation fault (11)
+[r105:13221] Signal code: Address not mapped (1)
+[r105:13221] Failing at address: 0x2b94fc571010
+[r105:13221] [ 0] /usr/lib64/libpthread.so.0(+0xf370)[0x2b94e075b370]
+[r105:13221] [ 1] /usr/lib64/libc.so.6(+0x149265)[0x2b94e0ab1265]
+[r105:13221] [ 2] /sw/parallel/openmpi/rackham-centos7/2.1.1gcc7.1.0/lib/openmpi/mca_btl_vader.so(+0x2952)[0x2b94ef91d952]
+[r105:13221] [ 3] /sw/parallel/openmpi/rackham-centos7/2.1.1gcc7.1.0/lib/openmpi/mca_pml_ob1.so(mca_pml_ob1_send_request_schedule_once+0x19e)[0x2b94f077fdee]
+[r105:13221] [ 4] /sw/parallel/openmpi/rackham-centos7/2.1.1gcc7.1.0/lib/openmpi/mca_pml_ob1.so(mca_pml_ob1_recv_frag_callback_ack+0x160)[0x2b94f077a2d0]
+[r105:13221] [ 5] /sw/parallel/openmpi/rackham-centos7/2.1.1gcc7.1.0/lib/openmpi/mca_btl_vader.so(mca_btl_vader_poll_handle_frag+0x79)[0x2b94ef91ebb9]
+[r105:13221] [ 6] /sw/parallel/openmpi/rackham-centos7/2.1.1gcc7.1.0/lib/openmpi/mca_btl_vader.so(+0x4242)[0x2b94ef91f242]
+[r105:13221] [ 7] /sw/parallel/openmpi/rackham-centos7/2.1.1gcc7.1.0/lib/libopen-pal.so.20(opal_progress+0x5c)[0x2b94e0fd763c]
+[r105:13221] [ 8] /opt/openmpi/2.1.1gcc7.1.0/lib/libmpi.so.20(ompi_mpi_finalize+0x125)[0x2b94e0196a65]
+[r105:13221] [ 9] ./code[0x401f00]
+[r105:13221] [10] /usr/lib64/libc.so.6(__libc_start_main+0xf5)[0x2b94e0989b35]
+[r105:13221] [11] ./code[0x400f09]
+[r105:13221] *** End of error message ***
+[warn] Epoll ADD(4) on fd 38 failed.  Old events were 0; read change was 0 (none); write change was 1 (add): Bad file descriptor
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 13221 on node r105 exited on signal 11 (Segmentation fault).
+--------------------------------------------------------------------------

@@ -1,0 +1,26 @@
+
+ Matrix size = 4 
+
+ Matrix A (generated randomly):
+
+ Multiplication done!
+ Elapsed time 0.0002984940074384 s
+
+Cglobal[0] =  13
+Cglobal[1] =  19
+Cglobal[2] =  19
+Cglobal[3] =  0
+Cglobal[4] =  4.94066e-324
+Cglobal[5] =  19
+Cglobal[6] =  28
+Cglobal[7] =  25
+Cglobal[8] =  9.84146e-317
+Cglobal[9] =  0
+Cglobal[10] =  19
+Cglobal[11] =  28
+Cglobal[12] =  28
+Cglobal[13] =  0
+Cglobal[14] =  2.122e-314
+Cglobal[15] =  0
+
+ Assertion failed
